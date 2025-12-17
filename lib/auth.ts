@@ -1,30 +1,19 @@
-import { cookies } from 'next/headers';
+// Simple client-side authentication utilities
+// Note: This is a mock implementation for development purposes
+// In production, use a proper auth service like Supabase, Firebase, or Auth0
 
-interface AuthUser {
+export interface AuthUser {
   id: string;
   email: string;
   name: string;
   role: 'admin' | 'manager' | 'cashier' | 'kitchen';
 }
 
-export async function setAuthToken(token: string) {
-  const cookieStore = await cookies();
-  cookieStore.set('authToken', token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax',
-    maxAge: 86400 * 7,
-  });
-}
-
-export async function getAuthToken() {
-  const cookieStore = await cookies();
-  return cookieStore.get('authToken')?.value;
-}
-
-export async function clearAuthToken() {
-  const cookieStore = await cookies();
-  cookieStore.delete('authToken');
+export interface LoginResult {
+  success: boolean;
+  token?: string;
+  user?: AuthUser;
+  error?: string;
 }
 
 export function validateEmail(email: string): boolean {
@@ -36,13 +25,15 @@ export function validatePassword(password: string): boolean {
   return password.length >= 6;
 }
 
-export async function loginUser(email: string, password: string): Promise<{ success: boolean; user?: AuthUser; error?: string }> {
+export function loginUser(email: string, password: string): LoginResult {
   if (!validateEmail(email)) {
     return { success: false, error: 'Invalid email format' };
   }
   if (!validatePassword(password)) {
     return { success: false, error: 'Password must be at least 6 characters' };
   }
+
+  // Mock users for demonstration
   const mockUsers: Record<string, { password: string; user: AuthUser }> = {
     'admin@restaurant.com': {
       password: 'admin123',
@@ -57,18 +48,18 @@ export async function loginUser(email: string, password: string): Promise<{ succ
       user: { id: '3', email: 'cashier@restaurant.com', name: 'كاشير', role: 'cashier' },
     },
   };
+
   const userRecord = mockUsers[email];
   if (!userRecord || userRecord.password !== password) {
     return { success: false, error: 'Invalid email or password' };
   }
+
+  // Create a simple token (in production, this should be signed JWT from server)
   const token = Buffer.from(JSON.stringify(userRecord.user)).toString('base64');
-  await setAuthToken(token);
-  return { success: true, user: userRecord.user };
+  return { success: true, token, user: userRecord.user };
 }
 
-export async function getCurrentUser(): Promise<AuthUser | null> {
-  const token = await getAuthToken();
-  if (!token) return null;
+export function getCurrentUserFromToken(token: string): AuthUser | null {
   try {
     const user = JSON.parse(Buffer.from(token, 'base64').toString('utf-8'));
     return user as AuthUser;
