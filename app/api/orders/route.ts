@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Order, BillSplitPerson, OrderItem, ApiResponse } from '@/lib/types/restaurant';
-
+import { Order, BillSplitPerson, OrderItem, ApiResponse } from '../../lib/types/restaurant';
 let orders: Order[] = [];
 
 export async function POST(request: NextRequest) {
