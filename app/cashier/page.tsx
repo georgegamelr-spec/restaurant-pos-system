@@ -201,7 +201,7 @@ export default function CashierPage() {
             </div>
           </div>
 
-          {/* Center Column: Menu */}
+    {/* Center Column: Menu */}
           <div className="flex-1 bg-gray-800/50 rounded-lg border border-gray-700 flex flex-col shadow-xl overflow-hidden">
             <div className="bg-gradient-to-r from-green-600 to-green-700 px-4 py-3 border-b border-gray-700">
               <h2 className="font-bold text-sm">🍽️ القائمة</h2>
