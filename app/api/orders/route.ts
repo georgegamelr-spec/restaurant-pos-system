@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Order, BillSplitPerson, OrderItem, ApiResponse } from '@/types/restaurant';export async function POST(request: NextRequest) {  
+  import { orders } from '@/lib/data';
   
   try {
     const body = await request.json();
