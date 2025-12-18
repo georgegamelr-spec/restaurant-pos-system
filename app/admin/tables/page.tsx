@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Table } from '../../../lib/types/restauran;
-  const [tables, setTables] = useState<Table[]>([]);
+import { Table } from '../../lib/types/restaurant';  const [tables, setTables] = useState<Table[]>([]);
+
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [language, setLanguage] = useState<'en' | 'ar'>('en');
