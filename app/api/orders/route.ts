@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Order, BillSplitPerson, OrderItem, ApiResponse } from '../../lib/types/restaurant.ts';
+import { Order, BillSplitPerson, OrderItem, ApiResponse } from '../../lib/types/restaura';
 
 export async function POST(request: NextRequest) {
   try {
