@@ -41,7 +41,6 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient();
     const body = await request.json();
 
     const { product_id, current_quantity, minimum_threshold, reorder_quantity, alert_level } = body;
