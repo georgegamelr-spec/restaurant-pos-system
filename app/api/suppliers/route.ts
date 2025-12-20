@@ -14,13 +14,13 @@ export async function GET(request: NextRequest) {
     const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
     const offset = (pageNum - 1) * limitNum;
 
-    let query = supabase.from('suppliers').select('*, { count: 'exact' }');
+    let query = supabase.from('suppliers').select('*');
 
     if (status) {
       query = query.eq('status', status);
     }
 
-    const { data, error, count } = await query
+    const { data, error } = await query
       .order('created_at', { ascending: false })
       .range(offset, offset + limitNum - 1)
 
@@ -34,8 +34,7 @@ export async function GET(request: NextRequest) {
       pagination: {
         page: pageNum,
         limit: limitNum,
-        total: count || 0,
-        pages: Math.ceil((count || 0) / limitNum),
+total: 0,        pages: Math.ceil((count || 0) / limitNum),
       },
     });
   } catch (error) {
