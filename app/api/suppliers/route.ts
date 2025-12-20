@@ -14,7 +14,7 @@ export async function GET(request: NextRequest) {
     const limitNum = Math.min(100, Math.max(1, parseInt(limit)));
     const offset = (pageNum - 1) * limitNum;
 
-    let query = supabase.from('suppliers').select('*');
+    let query = supabase.from('suppliers').select('*, { count: 'exact' }');
 
     if (status) {
       query = query.eq('status', status);
@@ -23,7 +23,6 @@ export async function GET(request: NextRequest) {
     const { data, error, count } = await query
       .order('created_at', { ascending: false })
       .range(offset, offset + limitNum - 1)
-      .count();
 
     if (error) {
       console.error('Database error:', error);
