@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { Order, BillSplitPerson, OrderItem, ApiResponse } from '@/types/restaurant';
+import { Order, BillSplitPerson, OrderItem, ApiResponse } from '@/lib/types/restaurant';
 import { orders } from '@/lib/data';
 
 export async function POST(request: NextRequest) {
