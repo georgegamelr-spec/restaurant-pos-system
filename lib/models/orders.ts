@@ -1,6 +1,6 @@
 import { supabase } from '../supabase';
 import { OrderRow, OrderItemRow } from './tables';
-import { Order, OrderItem } from '@/types/restaurant';
+import { Order, OrderItem } from '@/lib/types/restaurant';
 
 // Get all orders with optional filtering
 export async function getAllOrders(filters?: {
