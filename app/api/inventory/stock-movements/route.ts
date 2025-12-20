@@ -56,7 +56,6 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createClient();
     const body = await request.json();
 
     const { product_id, quantity_change, movement_type, reference_id, notes } = body;
