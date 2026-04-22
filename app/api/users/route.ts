@@ -1,35 +1,40 @@
-'use server';
-
 import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
-import { hasPermission } from '@/lib/rbac';
-
-const supabase = createRouteHandlerClient({ cookies });
+import { hasPermission, UserRole, PERMISSIONS } from '@/lib/rbac';
 
 // GET: List all users with pagination (Admin/Manager only)
 export async function GET(request: NextRequest) {
   try {
+    const supabase = createRouteHandlerClient({ cookies });
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
     const limit = parseInt(searchParams.get('limit') || '10');
     const role = searchParams.get('role');
 
-    // Get current user
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check RBAC permission
-    const canView = await hasPermission(user.id, 'user:read');
+    // Get user role from profile
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile) {
+      return NextResponse.json({ error: 'User profile not found' }, { status: 404 });
+    }
+
+    // Check RBAC permission using correct signature: (userRole: UserRole, permission: Permission)
+    const canView = hasPermission(profile.role as UserRole, PERMISSIONS.USERS_VIEW);
     if (!canView) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Fetch users
-    let query = supabase.from('user_profiles').select('*');
-    
+    let query = supabase.from('user_profiles').select('*', { count: 'exact' });
     if (role) {
       query = query.eq('role', role);
     }
@@ -61,29 +66,36 @@ export async function GET(request: NextRequest) {
 // POST: Create new user (Admin only)
 export async function POST(request: NextRequest) {
   try {
+    const supabase = createRouteHandlerClient({ cookies });
     const { email, password, fullName, role, restaurant_id } = await request.json();
 
-    // Get current user
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check RBAC permission
-    const canCreate = await hasPermission(user.id, 'user:create');
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile) {
+      return NextResponse.json({ error: 'User profile not found' }, { status: 404 });
+    }
+
+    const canCreate = hasPermission(profile.role as UserRole, PERMISSIONS.USERS_CREATE);
     if (!canCreate) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Validate input
     if (!email || !password || !fullName || !role) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Missing required fields: email, password, fullName, role' },
         { status: 400 }
       );
     }
 
-    // Create auth user
     const { data: authUser, error: signUpError } = await supabase.auth.admin.createUser({
       email,
       password,
@@ -92,35 +104,29 @@ export async function POST(request: NextRequest) {
 
     if (signUpError) throw signUpError;
 
-    // Create user profile
-    const { data: profile, error: profileError } = await supabase
+    const { data: newProfile, error: profileError } = await supabase
       .from('user_profiles')
-      .insert([
-        {
-          id: authUser.user.id,
-          email,
-          full_name: fullName,
-          role,
-          restaurant_id,
-          created_by: user.id,
-        },
-      ])
+      .insert([{
+        id: authUser.user.id,
+        email,
+        full_name: fullName,
+        role,
+        restaurant_id,
+        created_by: user.id,
+      }])
       .select();
 
     if (profileError) throw profileError;
 
-    // Log activity
-    await supabase.from('user_activity_logs').insert([
-      {
-        user_id: user.id,
-        action: 'create_user',
-        target_id: authUser.user.id,
-        description: `Created user ${email} with role ${role}`,
-      },
-    ]);
+    await supabase.from('user_activity_logs').insert([{
+      user_id: user.id,
+      action: 'create_user',
+      target_id: authUser.user.id,
+      description: `Created user ${email} with role ${role}`,
+    }]);
 
     return NextResponse.json({
-      data: profile[0],
+      data: newProfile[0],
       message: 'User created successfully',
     });
   } catch (error) {
@@ -135,21 +141,29 @@ export async function POST(request: NextRequest) {
 // PUT: Update user
 export async function PUT(request: NextRequest) {
   try {
+    const supabase = createRouteHandlerClient({ cookies });
     const { id, email, fullName, role, isActive } = await request.json();
 
-    // Get current user
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check RBAC permission
-    const canUpdate = await hasPermission(user.id, 'user:update');
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile) {
+      return NextResponse.json({ error: 'User profile not found' }, { status: 404 });
+    }
+
+    const canUpdate = hasPermission(profile.role as UserRole, PERMISSIONS.USERS_EDIT);
     if (!canUpdate) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Validate input
     if (!id) {
       return NextResponse.json(
         { error: 'User ID is required' },
@@ -157,19 +171,17 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Update auth user email if provided
     if (email) {
       await supabase.auth.admin.updateUserById(id, { email });
     }
 
-    // Update user profile
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
     if (fullName) updateData.full_name = fullName;
     if (role) updateData.role = role;
     if (isActive !== undefined) updateData.is_active = isActive;
     updateData.updated_at = new Date().toISOString();
 
-    const { data: profile, error: updateError } = await supabase
+    const { data: updatedProfile, error: updateError } = await supabase
       .from('user_profiles')
       .update(updateData)
       .eq('id', id)
@@ -177,18 +189,15 @@ export async function PUT(request: NextRequest) {
 
     if (updateError) throw updateError;
 
-    // Log activity
-    await supabase.from('user_activity_logs').insert([
-      {
-        user_id: user.id,
-        action: 'update_user',
-        target_id: id,
-        description: `Updated user profile`,
-      },
-    ]);
+    await supabase.from('user_activity_logs').insert([{
+      user_id: user.id,
+      action: 'update_user',
+      target_id: id,
+      description: 'Updated user profile',
+    }]);
 
     return NextResponse.json({
-      data: profile[0],
+      data: updatedProfile[0],
       message: 'User updated successfully',
     });
   } catch (error) {
@@ -203,6 +212,7 @@ export async function PUT(request: NextRequest) {
 // DELETE: Delete user (Admin only)
 export async function DELETE(request: NextRequest) {
   try {
+    const supabase = createRouteHandlerClient({ cookies });
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
 
@@ -213,19 +223,26 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Get current user
     const { data: { user }, error: userError } = await supabase.auth.getUser();
     if (userError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Check RBAC permission
-    const canDelete = await hasPermission(user.id, 'user:delete');
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile) {
+      return NextResponse.json({ error: 'User profile not found' }, { status: 404 });
+    }
+
+    const canDelete = hasPermission(profile.role as UserRole, PERMISSIONS.USERS_DELETE);
     if (!canDelete) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // Soft delete user
     const { error: updateError } = await supabase
       .from('user_profiles')
       .update({ is_active: false, deleted_at: new Date().toISOString() })
@@ -233,15 +250,12 @@ export async function DELETE(request: NextRequest) {
 
     if (updateError) throw updateError;
 
-    // Log activity
-    await supabase.from('user_activity_logs').insert([
-      {
-        user_id: user.id,
-        action: 'delete_user',
-        target_id: id,
-        description: 'Soft deleted user',
-      },
-    ]);
+    await supabase.from('user_activity_logs').insert([{
+      user_id: user.id,
+      action: 'delete_user',
+      target_id: id,
+      description: 'Soft deleted user',
+    }]);
 
     return NextResponse.json({
       message: 'User deleted successfully',
