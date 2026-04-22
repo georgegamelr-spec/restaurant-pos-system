@@ -1,13 +1,13 @@
 import React from 'react';
 
 interface ModalProps {
-  isOpen: boolean;
+  isOpen?: boolean;
   onClose: () => void;
   title?: string;
   children: React.ReactNode;
 }
 
-export default function Modal({ isOpen, onClose, title, children }: ModalProps) {
+export default function Modal({ isOpen = true, onClose, title, children }: ModalProps) {
   if (!isOpen) return null;
 
   return (
