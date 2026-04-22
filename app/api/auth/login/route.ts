@@ -1,7 +1,10 @@
-import { createServerComponentClient } from '@supabase/auth-helpers-nextjs';
+import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
 import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,9 +19,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create Supabase client
+    // Create Supabase client using RouteHandlerClient (correct for Route Handlers)
     const cookieStore = cookies();
-    const supabase = createServerComponentClient({ cookies: () => cookieStore });
+    const supabase = createRouteHandlerClient({ cookies: () => cookieStore });
 
     // Get user from database
     const { data: user, error: userError } = await supabase
@@ -36,7 +39,7 @@ export async function POST(request: NextRequest) {
 
     // Verify password
     const passwordMatch = await bcrypt.compare(password, user.encrypted_password);
-    
+
     if (!passwordMatch) {
       return NextResponse.json(
         { error: 'Invalid email or password' },
@@ -52,14 +55,33 @@ export async function POST(request: NextRequest) {
 
     // Return user data (without password)
     const { encrypted_password, ...userWithoutPassword } = user;
-    
-    return NextResponse.json(
-      { 
-        message: 'Login successful', 
-        user: userWithoutPassword 
+
+    // Generate JWT token
+    const token = jwt.sign(
+      { userId: user.id, email: user.email, role: user.role },
+      JWT_SECRET,
+      { expiresIn: '7d' }
+    );
+
+    // Set token as HTTP-only cookie so middleware can read it
+    const response = NextResponse.json(
+      {
+        message: 'Login successful',
+        user: userWithoutPassword,
+        token,
       },
       { status: 200 }
     );
+
+    response.cookies.set('authToken', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: '/',
+    });
+
+    return response;
   } catch (error) {
     console.error('Login error:', error);
     return NextResponse.json(
