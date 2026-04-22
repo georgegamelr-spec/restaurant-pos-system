@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { hasPermission } from '@/lib/rbac';
 
@@ -13,7 +13,6 @@ interface User {
 }
 
 export default function UsersPage() {
-  const supabase = createClientComponentClient();
   const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
