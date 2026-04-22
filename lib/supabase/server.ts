@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient } from '@supabase/supabase-js';
 
 function getSupabaseClient() {
@@ -11,11 +12,11 @@ function getSupabaseClient() {
   return createClient(supabaseUrl, supabaseKey);
 }
 
-// Lazy proxy that creates the client on first use (safe for build time)
-export const supabase = new Proxy({} as ReturnType<typeof getSupabaseClient>, {
-  get(_target, prop) {
+// Lazy proxy: safe at build time, creates client on first real use
+export const supabase = new Proxy({} as any, {
+  get(_target: any, prop: string | symbol) {
     const client = getSupabaseClient();
-    return (client as Record<string | symbol, unknown>)[prop];
+    return (client as any)[prop];
   },
 });
 
