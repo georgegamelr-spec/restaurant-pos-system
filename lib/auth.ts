@@ -1,6 +1,9 @@
 'use client';
-
 // Client-side authentication utilities that integrate with API routes
+// Note: The authToken JWT is stored as an HTTP-only cookie by the login API.
+// The middleware reads this cookie to protect routes.
+// This file stores user profile info in localStorage for quick access on the client.
+
 export interface AuthUser {
   id: string;
   email: string;
@@ -31,13 +34,11 @@ export function validatePassword(password: string): boolean {
 }
 
 /**
- * Login user via API endpoint
- * Calls POST /api/auth/login with email and password
+ * Login user via API endpoint.
+ * The API sets the authToken as an HTTP-only cookie automatically.
+ * We store the user object in localStorage for client-side access.
  */
-export async function loginUser(
-  email: string,
-  password: string
-): Promise<LoginResult> {
+export async function loginUser(email: string, password: string): Promise<LoginResult> {
   try {
     if (!validateEmail(email)) {
       return { success: false, error: 'Invalid email format' };
@@ -48,51 +49,35 @@ export async function loginUser(
 
     const response = await fetch('/api/auth/login', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: { 'Content-Type': 'application/json' },
+      // credentials: 'include' ensures cookies are sent/received
+      credentials: 'include',
       body: JSON.stringify({ email, password }),
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      return {
-        success: false,
-        error: data.error || 'Login failed',
-      };
+      return { success: false, error: data.error || 'Login failed' };
     }
 
-    // Store user data in localStorage
+    // Store user info in localStorage for quick client-side access
+    // (token is stored as HTTP-only cookie by the server)
     if (data.user) {
       localStorage.setItem('currentUser', JSON.stringify(data.user));
-      localStorage.setItem('authToken', data.token || '');
     }
 
-    return {
-      success: true,
-      token: data.token,
-      user: data.user,
-    };
+    return { success: true, user: data.user, token: data.token };
   } catch (error) {
     console.error('Login error:', error);
-    return {
-      success: false,
-      error: 'Network error or server unavailable',
-    };
+    return { success: false, error: 'Network error. Please try again.' };
   }
 }
 
 /**
- * Sign up new user via API endpoint
- * Calls POST /api/auth/signup with email, password, and role
+ * Signup user via API endpoint.
  */
-export async function signupUser(
-  email: string,
-  password: string,
-  name: string,
-  role: 'admin' | 'manager' | 'cashier' | 'kitchen' = 'cashier'
-): Promise<SignupResult> {
+export async function signupUser(email: string, password: string): Promise<SignupResult> {
   try {
     if (!validateEmail(email)) {
       return { success: false, error: 'Invalid email format' };
@@ -100,96 +85,72 @@ export async function signupUser(
     if (!validatePassword(password)) {
       return { success: false, error: 'Password must be at least 6 characters' };
     }
-    if (!name || name.trim().length === 0) {
-      return { success: false, error: 'Name is required' };
-    }
 
     const response = await fetch('/api/auth/signup', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ email, password, name, role }),
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ email, password }),
     });
 
     const data = await response.json();
 
     if (!response.ok) {
-      return {
-        success: false,
-        error: data.error || 'Signup failed',
-      };
+      return { success: false, error: data.error || 'Signup failed' };
     }
 
-    // Auto-login after signup
-    if (data.user) {
-      localStorage.setItem('currentUser', JSON.stringify(data.user));
-      localStorage.setItem('authToken', data.token || '');
-    }
-
-    return {
-      success: true,
-      user: data.user,
-    };
+    return { success: true, user: data.user };
   } catch (error) {
     console.error('Signup error:', error);
-    return {
-      success: false,
-      error: 'Network error or server unavailable',
-    };
+    return { success: false, error: 'Network error. Please try again.' };
   }
 }
 
 /**
- * Get current logged-in user from localStorage
+ * Logout: calls logout API to clear the HTTP-only cookie, then clears localStorage.
+ */
+export async function logoutUser(): Promise<void> {
+  try {
+    await fetch('/api/auth/logout', {
+      method: 'POST',
+      credentials: 'include',
+    });
+  } catch (error) {
+    console.error('Logout API error:', error);
+  } finally {
+    localStorage.removeItem('currentUser');
+  }
+}
+
+/**
+ * Get the current user from localStorage (client-side only).
+ * The actual auth is via HTTP-only cookie read by middleware.
  */
 export function getCurrentUser(): AuthUser | null {
   if (typeof window === 'undefined') return null;
-  const userStr = localStorage.getItem('currentUser');
-  if (!userStr) return null;
   try {
-    return JSON.parse(userStr);
+    const stored = localStorage.getItem('currentUser');
+    return stored ? JSON.parse(stored) : null;
   } catch {
     return null;
   }
 }
 
 /**
- * Get authentication token from localStorage
- */
-export function getAuthToken(): string | null {
-  if (typeof window === 'undefined') return null;
-  return localStorage.getItem('authToken');
-}
-
-/**
- * Logout user - clear stored auth data
- */
-export function logoutUser(): void {
-  if (typeof window === 'undefined') return;
-  localStorage.removeItem('currentUser');
-  localStorage.removeItem('authToken');
-}
-
-/**
- * Check if user is authenticated
+ * Check if user is authenticated by checking localStorage user.
+ * For server-side auth checking, the middleware handles it via cookie.
  */
 export function isAuthenticated(): boolean {
-  return getCurrentUser() !== null && getAuthToken() !== null;
+  return getCurrentUser() !== null;
 }
 
-/**
- * Check if user has required role
- */
-export function hasRole(role: string): boolean {
+export function hasRole(role: AuthUser['role']): boolean {
   const user = getCurrentUser();
   return user?.role === role;
 }
 
-/**
- * Check if user has any of the required roles
- */
-export function hasAnyRole(roles: string[]): boolean {
+export function hasAnyRole(roles: AuthUser['role'][]): boolean {
   const user = getCurrentUser();
-  return user ? roles.includes(user.role) : false;
+  if (!user) return false;
+  return roles.includes(user.role);
 }
