@@ -1,9 +1,16 @@
 'use client';
 
+interface InventoryItem {
+  id: string;
+  product_name: string;
+  product_code: string;
+  quantity_on_hand: number;
+}
+
 import { useState, useEffect } from 'react';
 
 export default function InventoryPage() {
-  const [inventory, setInventory] = useState([]);
+  const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -36,7 +43,7 @@ export default function InventoryPage() {
     <div className="min-h-screen bg-gray-50 p-8" dir="rtl">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-4xl font-bold text-gray-900 mb-8">إدارة المخزون</h1>
-        
+
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
           <div className="bg-white p-6 rounded-lg shadow">
             <p className="text-gray-600 text-sm">إجمالي المنتجات</p>
