@@ -149,3 +149,24 @@ export function getAllRoles(): UserRole[] {
 export function canAccessRoute(userRole: UserRole, requiredPermission: Permission): boolean {
   return hasPermission(userRole, requiredPermission);
 }
+
+// Check permission by user ID and permission string (e.g. 'purchase_orders:read')
+export async function checkPermission(
+  userId: string,
+  permissionString: string
+): Promise<boolean> {
+  try {
+    const { createClient } = await import('@/utils/supabase/server');
+    const supabase = createClient();
+    const { data: userProfile } = await supabase
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .single();
+    if (!userProfile?.role) return false;
+    const [resource, action] = permissionString.split(':');
+    return hasPermission(userProfile.role as UserRole, { resource, action });
+  } catch {
+    return false;
+  }
+}
