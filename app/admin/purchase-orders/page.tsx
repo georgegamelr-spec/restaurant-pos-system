@@ -324,5 +324,8 @@ export default function PurchaseOrdersPage() {
           </form>
         </Modal>
       )}
+        </div>
+);
+}
     </div>
   );
