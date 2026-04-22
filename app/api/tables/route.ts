@@ -4,7 +4,7 @@ const tables = [
   { id: '2', numberAr: 'الثانية', numberEn: 'Table 2', capacity: 6, status: 'empty', createdAt: new Date(), updatedAt: new Date() },
   { id: '3', numberAr: 'الثالثة', numberEn: 'Table 3', capacity: 4, status: 'empty', createdAt: new Date(), updatedAt: new Date() },
   { id: '4', numberAr: 'الرابعة', numberEn: 'Table 4', capacity: 8, status: 'empty', createdAt: new Date(), updatedAt: new Date() },
-] as const;
+  ] as unknown as Table[];
 export async function GET() {
   try {
     const response: ApiResponse<Table[]> = {
