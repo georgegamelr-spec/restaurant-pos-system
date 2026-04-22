@@ -33,7 +33,8 @@ export default function UsersPage() {
         router.push('/auth/login');
         return;
       }
-      const hasAccess = await hasPermission(user.id, 'user:create');
+              const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single();
+              const hasAccess = profile ? hasPermission(profile.role as import('@/lib/rbac').UserRole, { resource: 'user', action: 'create' }) : false;
       if (!hasAccess) {
         router.push('/admin');
         return;
