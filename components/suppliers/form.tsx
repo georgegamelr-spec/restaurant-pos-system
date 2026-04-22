@@ -17,7 +17,10 @@ interface Supplier {
   minOrder: number;
   notes: string;
   status: 'active' | 'inactive' | 'suspended';
-  [key: string]: unknown;
+    totalOrders?: number;
+  averageRating?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 interface SupplierFormProps {
