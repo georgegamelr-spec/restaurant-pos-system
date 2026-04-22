@@ -1,12 +1,27 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
+function getClient() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(supabaseUrl, supabaseKey);
+  if (!supabaseUrl || !supabaseKey) {
+    throw new Error('Missing Supabase environment variables');
+  }
 
-// Server-side Supabase client for admin operations
+  return createClient(supabaseUrl, supabaseKey);
+}
+
+// Lazy proxy - safe at build time, creates client on first real use
+export const supabase = new Proxy({} as any, {
+  get(_target: any, prop: string | symbol) {
+    return (getClient() as any)[prop];
+  },
+});
+
 export const createServerClient = (token?: string) => {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
   return createClient(supabaseUrl, supabaseKey, {
     global: {
       headers: {
