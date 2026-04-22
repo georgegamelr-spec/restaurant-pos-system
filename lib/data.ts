@@ -1,4 +1,4 @@
-import { Order, Table } from '@/types/restaurant';
+import { Order, Table } from '@/lib/types/restaurant';
 
 // Mock data for orders - this would typically come from a database
 export const orders: Order[] = [
