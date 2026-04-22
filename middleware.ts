@@ -5,16 +5,19 @@ const authRoutes = ['/auth/login', '/auth/signup'];
 
 export function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
-  const authToken = request.cookies.get('authToken');
-  const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
-  const isAuthRoute = authRoutes.some(route => pathname.startsWith(route));
+  // Read authToken from HTTP-only cookie (set by login API)
+  const authToken = request.cookies.get('authToken')?.value;
+  const isProtectedRoute = protectedRoutes.some((route) => pathname.startsWith(route));
+  const isAuthRoute = authRoutes.some((route) => pathname.startsWith(route));
 
+  // Redirect unauthenticated users away from protected routes
   if (isProtectedRoute && !authToken) {
     const loginUrl = new URL('/auth/login', request.url);
     loginUrl.searchParams.set('redirect', pathname);
     return NextResponse.redirect(loginUrl);
   }
 
+  // Redirect authenticated users away from login/signup pages
   if (isAuthRoute && authToken) {
     return NextResponse.redirect(new URL('/admin', request.url));
   }
