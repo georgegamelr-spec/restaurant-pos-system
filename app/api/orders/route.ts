@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
 
     if (!tableId || !items || items.length === 0) {
       return NextResponse.json(
-        { success: false, error: 'ليبر جاد' },
+        { success: false, error: 'tableId and items are required and items cannot be empty' },
         { status: 400 }
       );
     }
@@ -35,7 +35,11 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: newOrder });
   } catch (error) {
-    return NextResponse.json({ success: false, error: 'خطأ' }, { status: 500 });
+    console.error('POST /api/orders error:', error);
+    return NextResponse.json(
+      { success: false, error: 'Internal server error while creating order' },
+      { status: 500 }
+    );
   }
 }
 
@@ -51,7 +55,11 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ success: true, data: result });
   } catch (error) {
-    return NextResponse.json({ success: false, error: 'خطأ' }, { status: 500 });
+    console.error('GET /api/orders error:', error);
+    return NextResponse.json(
+      { success: false, error: 'Internal server error while fetching orders' },
+      { status: 500 }
+    );
   }
 }
 
@@ -60,12 +68,28 @@ export async function PATCH(request: NextRequest) {
     const body = await request.json();
     const { orderId, action, splitDetails } = body;
 
+    if (!orderId || !action) {
+      return NextResponse.json(
+        { success: false, error: 'orderId and action are required' },
+        { status: 400 }
+      );
+    }
+
     const order = orders.find(o => o.id === orderId);
     if (!order) {
-      return NextResponse.json({ success: false, error: 'الطلب غير موجود' }, { status: 404 });
+      return NextResponse.json(
+        { success: false, error: `Order with id '${orderId}' not found` },
+        { status: 404 }
+      );
     }
 
     if (action === 'split') {
+      if (!splitDetails) {
+        return NextResponse.json(
+          { success: false, error: 'splitDetails is required for split action' },
+          { status: 400 }
+        );
+      }
       order.splitDetails = splitDetails;
       order.updatedAt = new Date();
     } else if (action === 'settle') {
@@ -74,12 +98,27 @@ export async function PATCH(request: NextRequest) {
       order.updatedAt = new Date();
     } else if (action === 'transfer') {
       const { newTableId } = body;
+      if (!newTableId) {
+        return NextResponse.json(
+          { success: false, error: 'newTableId is required for transfer action' },
+          { status: 400 }
+        );
+      }
       order.tableId = newTableId;
       order.updatedAt = new Date();
+    } else {
+      return NextResponse.json(
+        { success: false, error: `Unknown action '${action}'. Valid actions: split, settle, transfer` },
+        { status: 400 }
+      );
     }
 
     return NextResponse.json({ success: true, data: order });
   } catch (error) {
-    return NextResponse.json({ success: false, error: 'خطأ' }, { status: 500 });
+    console.error('PATCH /api/orders error:', error);
+    return NextResponse.json(
+      { success: false, error: 'Internal server error while updating order' },
+      { status: 500 }
+    );
   }
 }
