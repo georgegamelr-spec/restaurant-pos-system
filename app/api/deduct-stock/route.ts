@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase';
-
+import { createClient } from '@/utils/supabase/server';
 export const dynamic = 'force-dynamic';
 
 // Helper: convert quantity to grams/ml base unit for comparison
